@@ -1,0 +1,80 @@
+pipeline{
+agent any
+tools {
+    maven 'maven3.9.6'
+}
+//triggers{}
+//options{}
+stages{
+    stage( '1.cloneCode' ){
+        steps{
+        sh "echo cloning in progress"
+        git "https://github.com/Team-hubb/maven-web-application"
+        sh "echo cloning successful"
+        }
+    }
+    stage( '2.mavenBuild' ){
+       steps{
+        sh "echo build in progress"
+       sh "echo running Junit test cases"
+       sh "echo test must passed before artifacts are created"
+       sh "mvn clean package"
+        }
+    }
+   stage( '3.codeQuality' ){
+      steps{ 
+        sh "mvn sonar:sonar"
+        }
+    }
+    stage( '4.uploadartifacts' ){
+    steps{
+       sh "mvn deploy"
+        }
+    }
+    stage( '5.deploy to uat' ){
+    steps{
+deploy adapters: [tomcat9(credentialsId: 'tomcatcredential', path: '', url: 'http://18.222.227.217:8080/')], contextPath: null, war: 'target/*war'
+        }
+    }
+     stage( '6.manualApproval' ){
+    steps{
+    sh "echo please review and approve"
+    timeout(time:5, unit:'HOURS') {
+        input message: 'Application ready for deployment, please review and approve'
+    }
+        }
+     }
+    stage( '7.deploy to prod' ){
+    steps{
+ deploy adapters: [tomcat9(credentialsId: 'tomcatcredential', path: '', url: 'http://18.222.227.217:8080/')], contextPath: null, war: 'target/*war'
+     }
+    }
+  }
+  post{
+      success{
+          emailext body: '''Hi,
+build successful.
+
+
+Landmark Technologies
++1 978 502 2039''', recipientProviders: [buildUser(), developers(), upstreamDevelopers(), contributor()], subject: 'Jenkins declarative build status', to: 'zackaribantar@yahoo.com'
+      }
+      failure{
+          mailext body: '''Hi,
+build failed.
+
+
+Landmark Technologies
++1 978 502 2039''', recipientProviders: [buildUser(), developers(), upstreamDevelopers(), contributor()], subject: 'Jenkins declarative build status', to: 'zackaribantar@yahoo.com'
+      }
+      always{
+        emailext body: '''Hi, 
+          build status for the jenkins-declarative pipeline job
+
+Landmark Technologies
++1 978 502 2039''', recipientProviders: [buildUser(), developers(), upstreamDevelopers(), contributor()], subject: 'Jenkins declarative build status', to: 'zackaribantar@yahoo.com'
+      }
+  
+  }
+ }
+
